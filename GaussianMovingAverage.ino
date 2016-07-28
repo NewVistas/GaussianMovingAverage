@@ -1,12 +1,13 @@
 const uint8_t analogDataPin = 0; // connect to a pot (simulates the analog signal)
 const uint8_t variancePin = 1; // connect to a pot (controls the variance)
-const uint8_t numSamplesPin = 2; // connect to a pot (controls the number of sample points that are averaged.  This is linked to the variance)
+const uint8_t numSamplesPin = 2; // connect to a pot (controls the number of sample points that are averaged.  The width of the gaussian curve spans the number of points averaged)
 const uint8_t cutoffPin = 3; // connect to a pot (controls how near the edges of a fixed gaussian curve we use for weights.  Doesn't control the variance or standard deviation)
-const uint8_t changeNumSamplesThreshold = 2; // set to a value between minNumSamples (most resolution) and the value of maxNumSamples (least resolution)
-const uint8_t minNumSamples = 1;
-const uint8_t maxNumSamples = 50; // you can increase this (max of 255) if you want to be able to average more data points
-const uint8_t gaussianCurveCutoff = 2.5; // only include 2.5 standard deviations to either side of the center
+const uint8_t changeNumSamplesThreshold = 1; // set to a value between minNumSamples (most resolution) and the value of maxNumSamples (least resolution)
+const uint8_t minNumSamples = 7;
+const uint8_t maxNumSamples = 255; // you can increase this (max of 255) if you want to be able to average more data points
+const uint8_t gaussianCurveCutoff; // only include 2.5 standard deviations to either side of the center
 const float maxVariance = 100.0;
+const float maxCutoff = 12.0;
 // This is the normal distribution table with z values from 1.5 to 3.0 in 0.1 increments (it is only used to calculate cutoffCorrection). Once you find a value that works, you can hard-code it:
 const float normalTable[16] = {0.93319279, 0.94520070, 0.95543453, 0.96406968, 0.9712834, 0.97724986, 0.98213557, 0.98609655, 0.9892758, 0.99180246, 0.99379033, 0.99533881, 0.99653302, 0.9974448, 0.99813418, 0.99865010};
 
@@ -29,7 +30,7 @@ void loop() {
 	float variance = mapf(analogRead(variancePin), 0, 1023, 0, maxVariance);
 
 	// TODO: optimize this like numSamples, but put mapf inside if statement, as well
-	float gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, 1.5, 3.0);
+	float gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, 1, maxCutoff);
 	//								array index = ((2.5 - 1.5)*10) = 15
 	cutoffCorrection = 1.0 / normalTable[round((gaussianCurveCutoff*10) - 15)]; // for a gaussianCurveCutoff of 2.5, index should be 15 and cutoffCorrection should equal 1.01256 
 
@@ -38,7 +39,8 @@ void loop() {
 		numSamples = numSamplesReading;
 		hasNumSamplesChanged = true;
 	}
-	getGaussianAverage(analogData, numSamples, variance);
+	getGaussianAverage(analogData, numSamples, gaussianCurveCutoff);
+	delay(100);
 
 	if(hasNumSamplesChanged == true) {
 		hasNumSamplesChanged = false;
@@ -59,6 +61,8 @@ void loop() {
 			analogData[currentSampleNumber] = currentSampleData;
 
 			if(currentSampleNumber == numSamples - 1) { // if we are at the last sample
+				// eventually, call and print getGaussianAverage here.
+
 				// Serial.println();
 				// Serial.println();
 				// Serial.println(getGaussianAverage(variance, analogData, numSamples), 3); // print gaussian weighted average of array
@@ -77,9 +81,11 @@ void loop() {
 	// Serial.println(gaussianCurveCutoff);
 }
 
-float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float variance) {
+float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float gaussianCurveCutoff) {
 	static const float inv_sqrt_2pi = 0.3989422804014327;
-	float sigma = sqrt(variance);
+	// float sigma = sqrt(variance);
+	float sigma = 1;
+	// float sigma = numberOfSamples + numberOfSamples*gaussianCurveCutoff; // help here
 	uint32_t gaussianSum = 0;
 	float gaussianAverage;
 	// uint32_t mean = 0;
@@ -99,13 +105,21 @@ float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float v
 	// 	float a = (i*gaussianCurveCutoff*2/numberOfSamples - gaussianCurveCutoff) / sigma;
 	// 	Serial.println(10*(inv_sqrt_2pi / sigma * exp(-0.5f * a * a)), 3);
 	// }
-	
+
+	// float sigma = numberOfSamples;
+
 	// print values for a gaussian distribution:
 	for(uint8_t i = 0; i < numberOfSamples; i++) {
 		// float a = (i*gaussianCurveCutoff*2/numberOfSamples - gaussianCurveCutoff) / sigma;
-		float a = (i - numberOfSamples/2) / sigma;
+		// float a = (i - numberOfSamples/2) / sigma;
+		float a = (i*gaussianCurveCutoff/numberOfSamples - gaussianCurveCutoff/2) / sigma;
 		float gaussianWeight = inv_sqrt_2pi / sigma * exp(-0.5f * a * a);
-		Serial.println(10*gaussianWeight, 3);
+		Serial.print(10*gaussianWeight, 3);
+		// Serial.print(" ");
+		// Serial.print(numSamples);
+		// Serial.print(" ");
+		// Serial.print(gaussianCurveCutoff);
+		Serial.println();
 		gaussianSum += (analogData[i]*gaussianWeight);
 	}
 	return (gaussianSum / numberOfSamples)*cutoffCorrection;
