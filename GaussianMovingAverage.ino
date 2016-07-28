@@ -7,7 +7,6 @@ const uint8_t maxNumSamples = 50; // you can increase this (max of 255) if you w
 uint8_t numSamples, currentSampleNumber = 0;
 uint16_t analogData[maxNumSamples];
 uint16_t currentSampleData;
-float mean;
 bool hasNumSamplesChanged = false; // TODO: make these static and move them inside loop
 
 void setup() {
@@ -15,7 +14,6 @@ void setup() {
 	pinMode(analogDataPin, INPUT);
 	pinMode(numSamplesPin, INPUT);
 	numSamples = map(analogRead(numSamplesPin), 0, 1023, minNumSamples, maxNumSamples);
-	mean = analogRead(analogDataPin);
 }
 
 void loop() {
@@ -32,37 +30,46 @@ void loop() {
 		uint16_t currentSampleData = analogRead(analogDataPin);
 
 		if(currentSampleNumber == numSamples) { // if we are one past the last sample
-			for(int i = 0; i < numSamples; i++) { // print samples in array
-				Serial.print(analogData[i]);
-				Serial.print("\t");
+			for(uint8_t i = 0; i < numSamples; i++) { // print samples in array
+				// Serial.println(analogData[i]);
 				analogData[i] = analogData[i + 1]; // shift all values in the array left by one ...
 			}
-			Serial.println();
 			analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
-			for(int i = 0; i < numSamples; i++) {
-				Serial.print(analogData[i]);
-				Serial.print("\t");
-			}
-			Serial.println();
-			Serial.println();
-
-			// Serial.println();
-			// Serial.println(getGaussianAverage(mean, 2147483600, analogData, numSamples)); // print gaussian weighted average of array
-			// Serial.println();
-			// Serial.println();
 			currentSampleNumber = 0; // reset currentSampleNumber to beginning of array
 		}
 		else {
 			analogData[currentSampleNumber] = currentSampleData;
+
+			if(currentSampleNumber == numSamples - 1) { // if we are at the last sample
+				// Serial.println();
+				// Serial.println();
+				getGaussianAverage(map(analogRead(analogDataPin), 0, 1023, 1, 20), analogData, numSamples); // print gaussian weighted average of array
+				// Serial.println();
+			}
 			currentSampleNumber++;
 		}
 	}
 }
 
-// float getGaussianAverage(float mean, float variance, int16_t analogData[], uint8_t numberOfSamples) {
-// 	static const float inv_sqrt_2pi = 0.3989422804014327;
-// 	float sigma = sqrt(variance);
-// 	float a = (x - mean) / sigma;
+void getGaussianAverage(float variance, uint16_t analogData[], uint8_t numberOfSamples) {
+	static const float inv_sqrt_2pi = 0.3989422804014327;
+	float sigma = sqrt(variance);
+	uint32_t mean = 0;
+	for(uint8_t i = 0; i < numberOfSamples; i++) { // calculate the mean
+		mean += analogData[i];
+	}
+	mean /= numberOfSamples;
 
-// 	return inv_sqrt_2pi / sigma * exp(-0.5f * a * a); // TODO: optimize the divide by multiplying and right shifting
-// }
+	// calculate the gaussian weighted average of the data points in analogData:
+	for(uint8_t i = 0; i < numberOfSamples; i++) {
+		float a = (analogData[i] - mean) / sigma;
+		analogData[i] = inv_sqrt_2pi / sigma * exp(-0.5f * a * a);
+	}
+
+	// print values for a gaussian distribution:
+	for(int8_t i = -numberOfSamples/2; i < numberOfSamples/2; i++) {
+		float a = (i - 0) / sigma;
+		Serial.println(inv_sqrt_2pi / sigma * exp(-0.5f * a * a), 3);
+	}
+	delay(100);
+}
