@@ -8,10 +8,10 @@ const float minCutoff = 3.0;
 const float maxCutoff = 8.0;
 
 float gaussianCurveCutoff; // how wide the gaussian curve is (number of standard deviations to either side of the center)
-uint8_t numSamples = 0;
+uint8_t numSamples;
 uint16_t analogData[maxNumSamples];
 uint16_t currentSampleData;
-uint16_t middleSample = 0;
+uint16_t middleSample;
 
 void setup() {
 	Serial.begin(115200);
@@ -22,6 +22,9 @@ void setup() {
 }
 
 void loop() {
+	// analogRead(numSamplesPin);
+	// analogRead(numSamplesPin);
+
 	// TODO: optimize this like numSamples, but put mapf inside if statement, as well
 	gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, minCutoff, maxCutoff);
 
