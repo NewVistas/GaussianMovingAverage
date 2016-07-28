@@ -2,10 +2,10 @@ const uint8_t analogDataPin = 0; // connect to a pot (simulates the analog signa
 const uint8_t numSamplesPin = 2; // connect to a pot (controls the number of sample points that are averaged.  The width of the gaussian curve spans the number of points averaged)
 const uint8_t cutoffPin = 3; // connect to a pot (controls how near the edges of a fixed gaussian curve we use for weights.  Doesn't control the variance or standard deviation)
 const uint8_t changeNumSamplesThreshold = 1; // set to a value between minNumSamples (most resolution) and the value of maxNumSamples (least resolution)
-const uint8_t minNumSamples = 7;
+const uint8_t minNumSamples = 5;
 const uint8_t maxNumSamples = 255; // you can increase this (max of 255) if you want to be able to average more data points
-const float minCutoff = 1.0;
-const float maxCutoff = 12.0;
+const float minCutoff = 3.0;
+const float maxCutoff = 8.0;
 
 float gaussianCurveCutoff; // how wide the gaussian curve is (number of standard deviations to either side of the center)
 uint8_t numSamples, currentSampleNumber = 0;
@@ -14,7 +14,7 @@ uint16_t currentSampleData;
 bool hasNumSamplesChanged = false; // TODO: make these static and move them inside loop
 
 void setup() {
-	Serial.begin(9600);
+	Serial.begin(115200);
 	pinMode(analogDataPin, INPUT);
 	pinMode(numSamplesPin, INPUT);
 	pinMode(cutoffPin, INPUT);
@@ -31,7 +31,7 @@ void loop() {
 		hasNumSamplesChanged = true;
 	}
 	getGaussianAverage(analogData, numSamples, gaussianCurveCutoff);
-	delay(100);
+	// delay(100);
 
 	if(hasNumSamplesChanged == true) {
 		hasNumSamplesChanged = false;
@@ -73,11 +73,11 @@ float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float g
 	for(uint8_t i = 0; i < numberOfSamples; i++) {
 		float a = (i*gaussianCurveCutoff/(numberOfSamples-1) - gaussianCurveCutoff/2);
 		float gaussianWeight = exp(-0.5f * a * a);
-		Serial.print(10*gaussianWeight, 3);
-		Serial.print(" ");
-		Serial.print(numSamples);
-		Serial.print(" ");
-		Serial.print(gaussianCurveCutoff);
+		Serial.print(100*gaussianWeight, 3);
+		// Serial.print(" ");
+		// Serial.print(numSamples);
+		// Serial.print(" ");
+		// Serial.print(gaussianCurveCutoff);
 		Serial.println();
 		gaussianSum += (analogData[i]*gaussianWeight);
 		sum += gaussianWeight;
