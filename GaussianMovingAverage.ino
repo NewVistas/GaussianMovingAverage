@@ -13,7 +13,15 @@ uint16_t analogData[maxNumSamples];
 uint16_t currentSampleData;
 uint16_t middleSample;
 
+enum Mode {
+	plotCurve,
+	plotData,
+	printWeights
+} mode;
+
 void setup() {
+	mode = plotCurve; // change this to "plotCurve" to plot the shape of the gaussian curve used for filtering.  Once values are tweaked to your liking, change to "printWeights", copy the weights and hard-code them.
+
 	Serial.begin(115200);
 	pinMode(analogDataPin, INPUT);
 	pinMode(numSamplesPin, INPUT);
@@ -22,55 +30,86 @@ void setup() {
 }
 
 void loop() {
-	// analogRead(numSamplesPin);
-	// analogRead(numSamplesPin);
 
 	// TODO: optimize this like numSamples, but put mapf inside if statement, as well
 	gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, minCutoff, maxCutoff);
+
+	if(mode == printWeights) {
+		printGaussianWeights(numSamples, gaussianCurveCutoff);
+		while(1);
+	}
 
 	uint8_t numSamplesReading = map(analogRead(numSamplesPin), 0, 1023, minNumSamples, maxNumSamples);
 	if(abs(numSamplesReading - numSamples) >= changeNumSamplesThreshold) { // only change numSamples when the pot reading has changed more than changeNumSamplesThreshold
 		numSamples = numSamplesReading;
 	}
 
-	uint16_t currentSampleData = analogRead(analogDataPin);
-	for(uint8_t i = 0; i < numSamples; i++) {
-		// shift the data to the left ...
-		analogData[i] = analogData[i + 1]; // TODO: possibly use a linked list instead
+	if(mode == plotData) {
+		uint16_t currentSampleData = analogRead(analogDataPin);
+		for(uint8_t i = 0; i < numSamples; i++) {
+			// shift the data to the left ...
+			analogData[i] = analogData[i + 1]; // TODO: possibly use a linked list instead
+		}
+		if(numSamples % 2 == 0) { // numSamples is even
+			middleSample = (analogData[numSamples/2+1] + analogData[numSamples/2-1])/2; // average the two middle points
+		}
+		else { // numSamples is odd
+			middleSample = analogData[numSamples/2]; // example: numSamples = 7, numSamples/2 = 3 (truncates), middle sample is analogData[3].
+		}
+		analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
+		Serial.print(middleSample); // print current sample delayed by numSamples/2
+		Serial.print(" ");
+		Serial.println(getGaussianAverage(analogData, numSamples, gaussianCurveCutoff), 3); // this should be compared to a reading delayed by numSamples/2
 	}
-	if(numSamples % 2 == 0) { // numSamples is even
-		middleSample = (analogData[numSamples/2+1] + analogData[numSamples/2-1])/2; // average the two middle points
+	else if(mode == plotCurve) {
+		for(uint8_t i = 0; i < numSamples; i++) {
+			float gaussianWeight = calculateGaussian(i, numSamples, gaussianCurveCutoff);
+			Serial.println(100*gaussianWeight, 3);
+		}
 	}
-	else { // numSamples is odd
-		middleSample = analogData[numSamples/2]; // example: numSamples = 7, numSamples/2 = 3 (truncates), middle sample is analogData[3].
-	}
-	analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
-	Serial.print(middleSample); // print current sample delayed by numSamples/2
-	Serial.print(" ");
-	Serial.println(getGaussianAverage(analogData, numSamples, gaussianCurveCutoff), 3); // this should be compared to a reading delayed by numSamples/2
 }
 
 float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float gaussianCurveCutoff) {
 	float gaussianSum = 0;
 	float sum = 0;
 
-	// print values for a gaussian distribution:
 	for(uint8_t i = 0; i < numberOfSamples; i++) {
-		float a = (i*gaussianCurveCutoff/(numberOfSamples-1) - gaussianCurveCutoff/2);
-		float gaussianWeight = exp(-0.5f * a * a);
-		// Serial.print(100*gaussianWeight, 3);
-		// Serial.print(" ");
-		// Serial.print(numSamples);
-		// Serial.print(" ");
-		// Serial.print(gaussianCurveCutoff);
-		// Serial.println();
+		float gaussianWeight = calculateGaussian(i, numberOfSamples, gaussianCurveCutoff);
 		gaussianSum += (analogData[i]*gaussianWeight);
 		sum += gaussianWeight;
 	}
 	return gaussianSum / sum; // normalize
 }
 
-float mapf(float x, float in_min, float in_max, float out_min, float out_max)
-{
+float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float calculateGaussian(uint8_t currentPoint, uint8_t numberOfSamples, float gaussianCurveCutoff) {
+	float a = (currentPoint*gaussianCurveCutoff/(numberOfSamples-1) - gaussianCurveCutoff/2);
+	return exp(-0.5f * a * a);
+}
+
+void printGaussianWeights(uint8_t numberOfSamples, float gaussianCurveCutoff) {
+	float gaussianWeights[numSamples];
+	float sum = 0;
+
+	for(uint8_t i = 0; i < numberOfSamples; i++) {
+		gaussianWeights[i] = calculateGaussian(i, numSamples, gaussianCurveCutoff);
+		sum += gaussianWeights[i];
+	}
+
+	Serial.println();
+	Serial.println();
+	for(uint8_t i = 0; i < numberOfSamples; i++) {
+		Serial.println(gaussianWeights[i] / sum, 7);
+	}
+
+	Serial.println();
+	Serial.print("Number of samples: ");
+	Serial.print(numSamples);
+	Serial.print("\t");
+	Serial.print("Gaussian curve cutoff: ");
+	Serial.println(gaussianCurveCutoff);
+	Serial.println();
 }
