@@ -1,5 +1,5 @@
 const uint8_t analogDataPin = 0; // connect to a pot (simulates the analog signal)
-const uint8_t variancePin = 1; // connect to a pot (controls the variance)
+const uint8_t variancePin = 1; // connect to a pot (not currently using this)
 const uint8_t numSamplesPin = 2; // connect to a pot (controls the number of sample points that are averaged.  The width of the gaussian curve spans the number of points averaged)
 const uint8_t cutoffPin = 3; // connect to a pot (controls how near the edges of a fixed gaussian curve we use for weights.  Doesn't control the variance or standard deviation)
 const uint8_t changeNumSamplesThreshold = 1; // set to a value between minNumSamples (most resolution) and the value of maxNumSamples (least resolution)
