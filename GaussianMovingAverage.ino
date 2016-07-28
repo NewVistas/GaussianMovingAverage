@@ -11,7 +11,7 @@ float gaussianCurveCutoff; // how wide the gaussian curve is (number of standard
 uint8_t numSamples = 0;
 uint16_t analogData[maxNumSamples];
 uint16_t currentSampleData;
-uint16_t middleSample = 0
+uint16_t middleSample = 0;
 
 void setup() {
 	Serial.begin(115200);
@@ -39,7 +39,7 @@ void loop() {
 		middleSample = (analogData[numSamples/2+1] + analogData[numSamples/2-1])/2; // average the two middle points
 	}
 	else { // numSamples is odd
-		middleSample = analogData[numSamples/2]; // example numSamples = 7, numSamples/2 = 3 (truncates), middle sample is analogData[3].
+		middleSample = analogData[numSamples/2]; // example: numSamples = 7, numSamples/2 = 3 (truncates), middle sample is analogData[3].
 	}
 	analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
 	Serial.print(middleSample); // print current sample delayed by numSamples/2
