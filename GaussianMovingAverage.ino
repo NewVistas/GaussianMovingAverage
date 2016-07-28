@@ -63,55 +63,21 @@ void loop() {
 			if(currentSampleNumber == numSamples - 1) { // if we are at the last sample
 				// eventually, call and print getGaussianAverage here.
 
-				// Serial.println();
-				// Serial.println();
 				// Serial.println(getGaussianAverage(variance, analogData, numSamples), 3); // print gaussian weighted average of array
-				// Serial.println();
-				// delay(100);
 			}
 			currentSampleNumber++;
 		}
 	}
-	// Serial.print(analogData[1]);
-	// Serial.print("\t");
-	// Serial.print(variance);
-	// Serial.print("\t");
-	// Serial.print(numSamples);
-	// Serial.print("\t");
-	// Serial.println(gaussianCurveCutoff);
 }
 
 float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float gaussianCurveCutoff) {
 	static const float inv_sqrt_2pi = 0.3989422804014327;
-	// float sigma = sqrt(variance);
 	float sigma = 1;
-	// float sigma = numberOfSamples + numberOfSamples*gaussianCurveCutoff; // help here
 	uint32_t gaussianSum = 0;
 	float gaussianAverage;
-	// uint32_t mean = 0;
-	// for(uint8_t i = 0; i < numberOfSamples; i++) { // calculate the mean
-	// 	mean += analogData[i];
-	// }
-	// mean /= numberOfSamples;
-
-	// calculate the gaussian weighted average of the data points in analogData:
-	// for(uint8_t i = 0; i < numberOfSamples; i++) {
-	// 	float a = (analogData[i] - mean) / sigma;
-	// 	analogData[i] = inv_sqrt_2pi / sigma * exp(-0.5f * a * a);
-	// }
-
-	// print values for a gaussian distribution:
-	// for(int8_t i = -numberOfSamples/2; i < numberOfSamples/2; i++) {
-	// 	float a = (i*gaussianCurveCutoff*2/numberOfSamples - gaussianCurveCutoff) / sigma;
-	// 	Serial.println(10*(inv_sqrt_2pi / sigma * exp(-0.5f * a * a)), 3);
-	// }
-
-	// float sigma = numberOfSamples;
 
 	// print values for a gaussian distribution:
 	for(uint8_t i = 0; i < numberOfSamples; i++) {
-		// float a = (i*gaussianCurveCutoff*2/numberOfSamples - gaussianCurveCutoff) / sigma;
-		// float a = (i - numberOfSamples/2) / sigma;
 		float a = (i*gaussianCurveCutoff/numberOfSamples - gaussianCurveCutoff/2) / sigma;
 		float gaussianWeight = inv_sqrt_2pi / sigma * exp(-0.5f * a * a);
 		Serial.print(10*gaussianWeight, 3);
