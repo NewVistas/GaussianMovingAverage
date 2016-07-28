@@ -8,10 +8,10 @@ const float minCutoff = 3.0;
 const float maxCutoff = 8.0;
 
 float gaussianCurveCutoff; // how wide the gaussian curve is (number of standard deviations to either side of the center)
-uint8_t numSamples, currentSampleNumber = 0;
+uint8_t numSamples = 0;
 uint16_t analogData[maxNumSamples];
 uint16_t currentSampleData;
-bool hasNumSamplesChanged = false; // TODO: make these static and move them inside loop
+uint16_t middleSample = 0
 
 void setup() {
 	Serial.begin(115200);
@@ -28,41 +28,23 @@ void loop() {
 	uint8_t numSamplesReading = map(analogRead(numSamplesPin), 0, 1023, minNumSamples, maxNumSamples);
 	if(abs(numSamplesReading - numSamples) >= changeNumSamplesThreshold) { // only change numSamples when the pot reading has changed more than changeNumSamplesThreshold
 		numSamples = numSamplesReading;
-		hasNumSamplesChanged = true;
 	}
-	getGaussianAverage(analogData, numSamples, gaussianCurveCutoff);
-	// delay(100);
 
-	if(hasNumSamplesChanged == true) {
-		hasNumSamplesChanged = false;
-		currentSampleNumber = 0;
+	uint16_t currentSampleData = analogRead(analogDataPin);
+	for(uint8_t i = 0; i < numSamples; i++) {
+		// shift the data to the left ...
+		analogData[i] = analogData[i + 1]; // TODO: possibly use a linked list instead
 	}
-	else {
-		uint16_t currentSampleData = analogRead(analogDataPin);
-
-		if(currentSampleNumber == numSamples) { // if we are one past the last sample
-			for(uint8_t i = 0; i < numSamples; i++) { // print samples in array
-				// if(i >= numSamples/2 && i < numSamples) { // TODO: verify this code:
-				// 	Serial.print(analogData[i - numSamples/2]);
-				// }
-				// else if(i >= 0) {
-				// 	Serial.print(analogData[numSamples - (i + 1)]);
-				// }
-				analogData[i] = analogData[i + 1]; // TODO: possibly use a linked list instead. shift all values in the array left by one ...
-			}
-			analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
-			currentSampleNumber = 0; // reset currentSampleNumber to beginning of array
-		}
-		else {
-			analogData[currentSampleNumber] = currentSampleData;
-
-			if(currentSampleNumber == numSamples - 1) { // if we are at the last sample
-				// Serial.print(" ");
-				// Serial.println(getGaussianAverage(variance, analogData, numSamples), 3); // print gaussian weighted average of array
-			}
-			currentSampleNumber++;
-		}
+	if(numSamples % 2 == 0) { // numSamples is even
+		middleSample = (analogData[numSamples/2+1] + analogData[numSamples/2-1])/2; // average the two middle points
 	}
+	else { // numSamples is odd
+		middleSample = analogData[numSamples/2]; // example numSamples = 7, numSamples/2 = 3 (truncates), middle sample is analogData[3].
+	}
+	analogData[numSamples-1] = currentSampleData; // ... and add the current sample to the end
+	Serial.print(middleSample); // print current sample delayed by numSamples/2
+	Serial.print(" ");
+	Serial.println(getGaussianAverage(analogData, numSamples, gaussianCurveCutoff), 3); // this should be compared to a reading delayed by numSamples/2
 }
 
 float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float gaussianCurveCutoff) {
@@ -73,12 +55,12 @@ float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float g
 	for(uint8_t i = 0; i < numberOfSamples; i++) {
 		float a = (i*gaussianCurveCutoff/(numberOfSamples-1) - gaussianCurveCutoff/2);
 		float gaussianWeight = exp(-0.5f * a * a);
-		Serial.print(100*gaussianWeight, 3);
+		// Serial.print(100*gaussianWeight, 3);
 		// Serial.print(" ");
 		// Serial.print(numSamples);
 		// Serial.print(" ");
 		// Serial.print(gaussianCurveCutoff);
-		Serial.println();
+		// Serial.println();
 		gaussianSum += (analogData[i]*gaussianWeight);
 		sum += gaussianWeight;
 	}
