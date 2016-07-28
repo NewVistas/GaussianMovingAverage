@@ -5,12 +5,12 @@ const uint8_t cutoffPin = 3; // connect to a pot (controls how near the edges of
 const uint8_t changeNumSamplesThreshold = 1; // set to a value between minNumSamples (most resolution) and the value of maxNumSamples (least resolution)
 const uint8_t minNumSamples = 7;
 const uint8_t maxNumSamples = 255; // you can increase this (max of 255) if you want to be able to average more data points
-const uint8_t gaussianCurveCutoff; // only include 2.5 standard deviations to either side of the center
 const float maxVariance = 100.0;
 const float maxCutoff = 12.0;
 // This is the normal distribution table with z values from 1.5 to 3.0 in 0.1 increments (it is only used to calculate cutoffCorrection). Once you find a value that works, you can hard-code it:
 const float normalTable[16] = {0.93319279, 0.94520070, 0.95543453, 0.96406968, 0.9712834, 0.97724986, 0.98213557, 0.98609655, 0.9892758, 0.99180246, 0.99379033, 0.99533881, 0.99653302, 0.9974448, 0.99813418, 0.99865010};
 
+float gaussianCurveCutoff; // only include 2.5 standard deviations to either side of the center
 float cutoffCorrection;
 uint8_t numSamples, currentSampleNumber = 0;
 uint16_t analogData[maxNumSamples];
@@ -30,7 +30,7 @@ void loop() {
 	float variance = mapf(analogRead(variancePin), 0, 1023, 0, maxVariance);
 
 	// TODO: optimize this like numSamples, but put mapf inside if statement, as well
-	float gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, 1, maxCutoff);
+	gaussianCurveCutoff = mapf(analogRead(cutoffPin), 0, 1023, 1, maxCutoff);
 	//								array index = ((2.5 - 1.5)*10) = 15
 	cutoffCorrection = 1.0 / normalTable[round((gaussianCurveCutoff*10) - 15)]; // for a gaussianCurveCutoff of 2.5, index should be 15 and cutoffCorrection should equal 1.01256 
 
@@ -115,10 +115,10 @@ float getGaussianAverage(uint16_t analogData[], uint8_t numberOfSamples, float g
 		float a = (i*gaussianCurveCutoff/numberOfSamples - gaussianCurveCutoff/2) / sigma;
 		float gaussianWeight = inv_sqrt_2pi / sigma * exp(-0.5f * a * a);
 		Serial.print(10*gaussianWeight, 3);
-		// Serial.print(" ");
-		// Serial.print(numSamples);
-		// Serial.print(" ");
-		// Serial.print(gaussianCurveCutoff);
+		Serial.print(" ");
+		Serial.print(numSamples);
+		Serial.print(" ");
+		Serial.print(gaussianCurveCutoff);
 		Serial.println();
 		gaussianSum += (analogData[i]*gaussianWeight);
 	}
